@@ -19,7 +19,7 @@
     <textarea id="notice-input" class="w-full border p-2 rounded mb-2">{{ home.notice }}</textarea>
     <button onclick="saveNotice()" class="bg-blue-500 text-white px-3 py-1 rounded">저장</button>
     {% else %}
-    <p class="text-gray-600">{{ home.notice }}</p>
+    <p class="text-gray-600">{{ home.notice | linkify }}</p>
     {% endif %}
 </section>
 
@@ -46,7 +46,7 @@
             <textarea id="intro-input" class="w-full border p-2 rounded mb-2">{{ home.intro }}</textarea>
             <button onclick="saveIntro()" class="bg-blue-500 text-white px-3 py-1 rounded">저장</button>
             {% else %}
-            <p>{{ home.intro }}</p>
+            <p>{{ home.intro | linkify }}</p>
             {% endif %}
         </div>
 
@@ -80,7 +80,7 @@
         {% if part.image %}
         <img src="{{ part.image }}" class="w-full mb-4">
         {% endif %}
-        <p>{{ part.text }}</p>
+        <p>{{ part.text | linkify }}</p>
 
         {% endif %}
 

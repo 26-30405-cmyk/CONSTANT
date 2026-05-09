@@ -35,9 +35,8 @@
             <div class="mb-3">
                 <div class="relative inline-block">
 
-                    <span 
-                    onclick="togglePostMenu(event, '{{ p.user }}', '{{ session.get('user') }}', '{{ p.id }}')"
-                    class="{% if p.user == session.get('user') %}text-emerald-500 cursor-pointer hover:text-emerald-600 active:brightness-75 active:scale-95 transition{% else %}text-gray-400 cursor-default{% endif %}">
+                    <span onclick="togglePostMenu(event, '{{ p.user }}', '{{ session.get('user') }}', '{{ p.id }}')"
+                        class="{% if p.user == session.get('user') %}text-emerald-500 cursor-pointer hover:text-emerald-600 active:brightness-75 active:scale-95 transition{% else %}text-gray-400 cursor-default{% endif %}">
                         {{ p.user }}
                     </span>
 
@@ -78,9 +77,8 @@
                     <div class="text-sm text-gray-600 pl-2 relative" data-reply-id="{{ r.id }}">
 
                         ↳
-                        <span 
-                        onclick="toggleMenu(event, '{{ r.user }}', '{{ session.get('user') }}')"
-                        class="{% if r.user == session.get('user') %}text-emerald-500 cursor-pointer hover:text-emerald-600 active:brightness-75 active:scale-95 transition{% else %}text-gray-400 cursor-default{% endif %}">
+                        <span onclick="toggleMenu(event, '{{ r.user }}', '{{ session.get('user') }}')"
+                            class="{% if r.user == session.get('user') %}text-emerald-500 cursor-pointer hover:text-emerald-600 active:brightness-75 active:scale-95 transition{% else %}text-gray-400 cursor-default{% endif %}">
                             {{ r.user }}
                         </span>
                         : <span class="reply-content">{{ r.content }}</span>
@@ -259,6 +257,32 @@
                     replyBox.insertBefore(newReply, inputBox);
 
                     input.value = "";
+                    // 🔥 repliesData 실시간 반영
+                    if (!repliesData[postId]) {
+                        repliesData[postId] = [];
+                    }
+
+                    repliesData[postId].push({
+                        id: data.reply_id,
+                        user: currentUser,
+                        content: content
+                    });
+
+                    // 🔥 댓글 개수 업데이트
+                    const postBox = document.querySelector(`[data-id='${postId}']`);
+
+                    if (postBox) {
+
+                        postBox.dataset.reply = repliesData[postId].length;
+
+                        const btn =
+                            document.getElementById("reply-btn-" + postId);
+
+                        if (btn) {
+                            btn.innerText =
+                                `댓글 보기 (${repliesData[postId].length})`;
+                        }
+                    }
                 }
             });
     }
@@ -319,40 +343,74 @@
     const repliesData = {{ replies | tojson }};
 
     function openMyModal() {
+
         const box = document.getElementById("myContent");
         box.innerHTML = "";
 
         // 🔥 내가 쓴 글
-        postsData.forEach(p => {
-            if (p.user === currentUser) {
-                const div = document.createElement("div");
-                div.className = "p-2 bg-gray-100 rounded cursor-pointer hover:bg-gray-200";
-                div.innerText = p.content;
+        document.querySelectorAll("[data-id]")
+            .forEach(post => {
 
-                div.onclick = () => goToPost(p.id);
+                const user =
+                    post.querySelector("span").innerText.trim();
 
-                box.appendChild(div);
-            }
-        });
+                if (user === currentUser) {
 
-        // 🔥 내가 쓴 댓글
-        Object.entries(repliesData).forEach(([postId, arr]) => {
-            arr.forEach(r => {
-                if (r.user === currentUser) {
+                    const content =
+                        post.querySelector(".text-gray-700").innerText;
+
                     const div = document.createElement("div");
-                    div.className = "p-2 bg-gray-50 rounded cursor-pointer hover:bg-gray-200";
-                    div.innerText = "↳ " + r.content;
 
-                    div.onclick = () => goToPost(postId);
+                    div.className =
+                        "p-2 bg-gray-100 rounded cursor-pointer hover:bg-gray-200";
+
+                    div.innerText = content;
+
+                    div.dataset.postId = post.dataset.id;
+                    div.dataset.type = "post";
+
+                    div.onclick = () =>
+                        goToPost(post.dataset.id);
 
                     box.appendChild(div);
                 }
             });
-        });
 
-        document.getElementById("myModal").classList.remove("hidden");
+        // 🔥 내가 쓴 댓글
+        document.querySelectorAll("[data-reply-id]")
+            .forEach(reply => {
+
+                const user =
+                    reply.querySelector("span").innerText.trim();
+
+                if (user === currentUser) {
+
+                    const content =
+                        reply.querySelector(".reply-content").innerText;
+
+                    const div = document.createElement("div");
+
+                    div.className =
+                        "p-2 bg-gray-50 rounded cursor-pointer hover:bg-gray-200";
+
+                    div.innerText = "↳ " + content;
+
+                    div.dataset.replyId = reply.dataset.replyId;
+                    div.dataset.type = "reply";
+
+                    const post =
+                        reply.closest("[data-id]");
+
+                    div.onclick = () =>
+                        goToPost(post.dataset.id);
+
+                    box.appendChild(div);
+                }
+            });
+
+        document.getElementById("myModal")
+            .classList.remove("hidden");
     }
-
     function closeMyModal() {
         document.getElementById("myModal").classList.add("hidden");
     }
@@ -383,9 +441,18 @@
 
 
     // 바깥 클릭하면 닫기
-    document.addEventListener("click", () => {
-        document.querySelectorAll("[id^='menu-'], [id^='post-menu-']")
-            .forEach(m => m.classList.add("hidden"));
+    // 🔥 빈 공간 클릭 시 메뉴 닫기
+    document.addEventListener("click", (e) => {
+
+        // 메뉴 내부 클릭이면 무시
+        if (e.target.closest("[id^='menu-']")) return;
+
+        // 모든 메뉴 닫기
+        document.querySelectorAll("[id^='menu-']")
+            .forEach(menu => {
+                menu.classList.add("hidden");
+            });
+
     });
 
     function editReply(id, oldContent) {
@@ -466,19 +533,74 @@
         })
             .then(res => res.json())
             .then(data => {
+
                 if (data.success) {
 
+                    // 🔥 게시글 삭제인지 확인
                     const post = btn.closest("[data-id]");
-                    if (post) {
+
+                    // 🔥 댓글 삭제인지 확인
+                    const reply = btn.closest("[data-reply-id]");
+
+                    // 게시글 삭제
+                    if (post && !reply) {
+
+                        const deletedPostId = post.dataset.id;
+
                         post.remove();
+
+                        // 🔥 내 활동 목록에서도 제거
+                        document.querySelectorAll("#myContent div")
+                            .forEach(el => {
+
+                                if (el.dataset.postId == deletedPostId) {
+                                    el.remove();
+                                }
+
+                            });
+
                         return;
                     }
 
-                    const reply = btn.closest(".text-sm");
-                    if (reply) reply.remove();
+                    // 댓글 삭제
+                    if (reply) {
+
+                        const postBox = reply.closest("[data-id]");
+                        const postId = postBox.dataset.id;
+
+                        reply.remove();
+
+                        // 🔥 댓글 수 실시간 감소
+                        const replyBtn =
+                            document.getElementById("reply-btn-" + postId);
+
+                        let currentCount =
+                            parseInt(postBox.dataset.reply || 0);
+
+                        currentCount = Math.max(0, currentCount - 1);
+
+                        postBox.dataset.reply = currentCount;
+
+                        replyBtn.innerText =
+                            `댓글 보기 (${currentCount})`;
+
+                        // 🔥 내 활동 목록에서도 제거
+                        document.querySelectorAll("#myContent div")
+                            .forEach(el => {
+
+                                if (
+                                    el.dataset.type === "reply" &&
+                                    el.dataset.replyId == id
+                                ) {
+                                    el.remove();
+                                }
+
+                            });
+                    }
                 }
             });
     }
+
     function closeEditModal() {
         document.getElementById("editModal").classList.add("hidden");
     }

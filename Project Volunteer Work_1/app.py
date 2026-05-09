@@ -3,6 +3,8 @@ import json, os, datetime, calendar
 import holidays
 import os
 from werkzeug.utils import secure_filename
+import re
+from markupsafe import Markup
 app = Flask(__name__)
 app.secret_key = "my_super_secret_key_1234"
 ADMIN_ID = "admin"
@@ -74,6 +76,26 @@ def load_home():
         "parts": {}
     }
 
+
+@app.template_filter('linkify')
+def linkify(text):
+
+    if not text:
+        return ""
+
+    # 줄바꿈 유지
+    text = text.replace('\n', '<br>')
+
+    # 링크 자동 변환
+    url_pattern = r'(https?://[^\s<]+)'
+
+    text = re.sub(
+        url_pattern,
+        r'<a href="\1" target="_blank" class="text-blue-500 underline">\1</a>',
+        text
+    )
+
+    return Markup(text)
 # -----------------------------
 # 모든 템플릿에 profile 자동 주입
 # -----------------------------

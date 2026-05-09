@@ -10,6 +10,51 @@
     <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
 </head>
+<style>
+    /* 날짜 영역 */
+    .fc .fc-daygrid-day-top {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 2px !important;
+    }
+
+    /* 날짜 숫자 */
+    .fc .fc-daygrid-day-number {
+        font-weight: normal;
+    }
+
+    /* 공휴일 이름 */
+    .holiday-name {
+        font-size: 0.65rem;
+        color: #dc2626;
+        line-height: 1.1;
+        margin-top: 2px;
+        word-break: keep-all;
+    }
+
+    /* 일요일 */
+    .sunday {
+        color: #dc2626 !important;
+    }
+
+    /* 토요일 */
+    .saturday {
+        color: #2563eb !important;
+    }
+
+    /* 오늘 */
+    .fc-day-today {
+        background: #fef3c7 !important;
+    }
+
+    /* 이벤트 */
+    .fc-event {
+        border: none !important;
+        border-radius: 6px !important;
+        padding: 2px !important;
+    }
+</style>
 
 <body class="bg-gray-100 font-sans">
 
@@ -211,6 +256,7 @@
     </div>
 
     <script>
+        const holidays = {{ holidays| tojson }};
         const isLoggedIn = {{ 'true' if session.get("user") else 'false' }};
         let selectedEvent = null;
         let editingId = null;
@@ -485,6 +531,53 @@
                                 });
                         });
                 },
+                // 🔥 날짜 숫자만 표시
+                dayCellDidMount: function (info) {
+
+                    const date = info.date;
+                    const day = date.getDay();
+
+                    const dateStr =
+                        date.getFullYear() + "-" +
+                        String(date.getMonth() + 1).padStart(2, "0") + "-" +
+                        String(date.getDate()).padStart(2, "0");
+
+                    const numberEl = info.el.querySelector(".fc-daygrid-day-number");
+
+                    // 🔥 토요일
+                    if (day === 6 && numberEl) {
+                        numberEl.style.color = "#2563eb";
+                    }
+
+                    // 🔥 일요일
+                    if (day === 0 && numberEl) {
+                        numberEl.style.color = "#dc2626";
+                    }
+
+                    // 🔥 공휴일
+                    if (holidays[dateStr]) {
+
+                        if (numberEl) {
+                            numberEl.style.color = "#dc2626";
+                        }
+
+                        const top = info.el.querySelector(".fc-daygrid-day-top");
+
+                        // 🔥 이미 있으면 추가 안 함
+                        if (top && !top.querySelector(".holiday-name")) {
+
+                            const holiday = document.createElement("div");
+
+                            holiday.className = "holiday-name";
+                            holiday.innerText = holidays[dateStr];
+
+                            top.appendChild(holiday);
+                        }
+                    }
+                },
+
+
+
 
                 eventClick: function (info) {
 
@@ -509,8 +602,8 @@
                 }
 
             });
-
             calendar.render();
+
         }
 
         // 드래그
